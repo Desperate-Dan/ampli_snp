@@ -3,10 +3,11 @@ import re
 from collections import defaultdict
 import json
 
-test_bed = "MPXV.primer.bed"
-lineage_def = "lineages.json"
-lineage_csv = "MPX_reconstruction_with_only_def.csv"
- 
+#test_bed = "MPXV.primer.bed"
+#lineage_def = "lineages.json"
+#lineage_csv = "MPX_reconstruction_def.csv"
+
+
 
 def bed_file_reader(input_bed):
     #Read a bed file in format CHR, start_pos, end_pos, primer_id, etc and return an amplicon dictionary
@@ -25,55 +26,48 @@ def bed_file_reader(input_bed):
             amplicon_dict[primer[-1].rstrip("_RIGHT")].append(int(primer[1]))
     
     return (amplicon_dict)
- 
+
+
 
 def lineage_json_parser(lineage_json):
     #Parse the lineage json from "https://github.com/mpxv-lineages/lineage-designation/blob/master/auto-generated/lineages.json"
-    data = json.load(open(lineage_json))
     defining_snps_dict_json = defaultdict(list)
-    #Loop through the different lineages in the json...
-    for lineage in data["lineages"]:
-        #...and add their defining positions to a new dictionary.
-        for def_snp in lineage["defining_snps"]:
-            defining_snps_dict_json[lineage["name"]].append(def_snp["pos"])
+    snp_lineage_dict_json = {}
+    if lineage_json:
+        data = json.load(open(lineage_json))
+        #Loop through the different lineages in the json...
+        for lineage in data["lineages"]:
+            #...and add their defining positions to a new dictionary.
+            for def_snp in lineage["defining_snps"]:
+                defining_snps_dict_json[lineage["name"]].append(def_snp["pos"])
+                snp_lineage_dict_json[def_snp["pos"]] = lineage["name"]
 
-    return defining_snps_dict_json
+    return defining_snps_dict_json, snp_lineage_dict_json
+
+
 
 def lineage_csv_parser(lineage_csv):
     #Parse an input csv of mutations - be careful though, positions are hard coded...
-    data = open(lineage_csv)
     defining_snps_dict_csv = defaultdict(list)
-    #Skip the header
-    next(data, None)
-    for line in data:
-        line = line.rstrip("\n").split(",")
-        defining_snps_dict_csv[line[3]].append(int(line[2]))
+    snp_lineage_dict_csv = {}
+    if lineage_csv:
+        data = open(lineage_csv)    
+        #Skip the header
+        next(data, None)
+        for line in data:
+            line = line.rstrip("\n").split(",")
+            defining_snps_dict_csv[line[1]].append(int(line[0]))
+            snp_lineage_dict_csv[int(line[0])] = line[1]
     
-    return defining_snps_dict_csv
-    
-def snp_lineage_inverter(lineage_json, lineage_csv):
-    #Want to create a new dictionary with SNP keys and lineage values.
-    #This could definitely be incorporated into the two snp defining functions above.
-    data = open(lineage_csv)
-    snp_lineage_dict = {}
-    next(data, None)
-    for line in data:
-        line = line.rstrip("\n").split(",")
-        snp_lineage_dict[int(line[2])] = line[3]
-    data = json.load(open(lineage_json))
-    defining_snps_dict_json = defaultdict(list)
-    #Loop through the different lineages in the json...
-    for lineage in data["lineages"]:
-        #...and add their defining positions to a new dictionary.
-        for def_snp in lineage["defining_snps"]:
-            snp_lineage_dict[def_snp["pos"]] = lineage["name"]
-            #defining_snps_dict_json[lineage["name"]].append(def_snp["pos"])
-    return snp_lineage_dict
+    return defining_snps_dict_csv, snp_lineage_dict_csv
 
-def amplicons_vs_snps(amplicon_dict, snp_lineage_dict,
+
+
+def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json, lineages_of_interest,
                       defining_snps_dict_json = defaultdict(list), defining_snps_dict_csv = defaultdict(list)):
     #Combining the dictionaries made from the json and the csv - might be defferential to y values ( x | y ) so need to be careful
-    defining_snps_dict = (defining_snps_dict_json | defining_snps_dict_csv)
+    defining_snps_dict = {**defining_snps_dict_json, **defining_snps_dict_csv}
+    snp_lineage_dict = {**snp_lineage_dict_csv, **snp_lineage_dict_json}
     #print(defining_snps_dict)
     #Take the dict of snp positions and loop through the lineages.
     lineage_primer_dict = defaultdict(dict)
@@ -111,12 +105,18 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict,
     full_snp_primer_dict = defaultdict(list)
     minimal_primer_list = []
     amplicon_lineage_dict = defaultdict(set)
-    #This should eventually be user defined but currently is all lineages with defining snps
-    lineages_of_interest = set()
+    
+    #Parse the input lineages or select all lineages with defining snps if none given
+    if lineages_of_interest:
+        print(lineages_of_interest)
+        lineages_of_interest = set(lineages_of_interest.split(","))
+        print(lineages_of_interest)
+    else:
+        for lineage in lineage_primer_dict:
+            lineages_of_interest.add(lineage)
     
     #Make the overly complicated dictionaries and lists...
     for lineage in lineage_primer_dict:
-        lineages_of_interest.add(lineage)
         for snp in lineage_primer_dict[lineage]:
             for i,primer in enumerate(lineage_primer_dict[lineage][snp]):
                 #Count occurances of each primer in full list.
@@ -132,49 +132,60 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict,
             #Append a list of the most often seen primer per snp
             minimal_primer_list.append(full_snp_primer_dict[snp][snp_primer_index[snp]])
     #"Unique" this list to get the minimal primer set
-    #print("This is the minimal list of primers to cover every snp: %s" % set(minimal_primer_list))        
+    print("This is the minimal list of primers to cover every snp: %s" % set(minimal_primer_list))        
+
     
-    #print(snp_primer_counts)
-    #print(full_snp_primer_dict)
-   
-    #Should there be a check for potential "pool A and B" conflicts?
-                
-    #print (amplicon_lineage_dict)
-    #print (lineages_of_interest)
+    #Next section is to generate the minimal primer set that captures at least one snp from all given lineages
+    #Broadly this sorts the dictionary of sets of lineages covered by an amplicon from most to least
+    #It then adds non-redundant primers to a list until all lineages are represented, checking for any "pool conflicts" 
     
     #Modified this from https://stackoverflow.com/questions/9281788/get-longest-element-in-dict/9281968#9281968
+    #This now sorts the diictionary by the length of the values (note it's no longer actually a dictionary)
     amplicon_lineage_dict = (sorted(((len(v), v, k) for k, v in amplicon_lineage_dict.items()),reverse = True))
     
-    
+    #Create the lists and sets required.
     least_primer_lineage_list = []
     covered_lineage_set = set()
     for i in amplicon_lineage_dict:
-        if (covered_lineage_set == lineages_of_interest):
-            break
-        elif (covered_lineage_set.issuperset(i[1])):
-            continue
-        else:
-            covered_lineage_set = covered_lineage_set.union(i[1])
+        #First check if for any primers that cover all the lineages straight away
+        if lineages_of_interest.issubset(i[1]):
             least_primer_lineage_list.append(i[2])
+            break
+        else:
+            #If no easy match move on... Check if the covered lineages match with the ones we want to cover, when they do job's a good'un        
+            if (covered_lineage_set.issuperset(lineages_of_interest)):
+                break
+            #If the currently covered lineages are a superset of the newly considered amplicon set, ignore it and continue
+            elif (covered_lineage_set.issuperset(i[1])):
+                continue
+            
+
+
+            ####THIS BIT IS BROKEN####
+            elif ((print(x) for x in i[1].difference(covered_lineage_set))):
+                
+                #print(lineages_of_interest.difference(covered_lineage_set))
+                continue
+            #If it's not redundant to add it check if there are any primer pool conflicts
+            else:
+                #Check if the new amplicon is compatible with those already in the set
+                if covered_lineage_set:
+                    amp_no = int(i[2].split("_")[1])
+                    if (re.match((".*" + str(amp_no + 1) + ".*"), str(least_primer_lineage_list))):
+                        print("Amplicon pool conflict found for %s and %s" % (i[2],amp_no + 1))
+                        continue
+                    elif (re.match((".*" + str(amp_no - 1) + ".*"), str(least_primer_lineage_list))):
+                        print("Amplicon pool conflict found for %s and %s" % (i[2],amp_no - 1))
+                        continue                
+                    else:
+                        covered_lineage_set = covered_lineage_set.union(i[1])
+                        least_primer_lineage_list.append(i[2])
+                #This adds the first amplicon to allow subsequent checks
+                else:    
+                    covered_lineage_set = covered_lineage_set.union(i[1])
+                    least_primer_lineage_list.append(i[2])
     
-    #print (least_primer_lineage_list)
+    print ("\nThis is the minimal list of primers to cover every lineage of interest: %s\n" % least_primer_lineage_list)
     
-    #print (full_snp_primer_dict)
-    #print("\n")
-    #print (snp_primer_index)
-    #print("\n")
-    #print (lineage_primer_dict)
-    #print("\n")
-    #print (minimal_primer_list)
     
     return output_tsv, defining_snps_dict, least_primer_lineage_list
-        
-output_amplicon_dict = bed_file_reader(test_bed)
-
-output_def_snps_csv = lineage_csv_parser(lineage_csv)
-
-output_def_snps_json = lineage_json_parser(lineage_def)
-
-output_snp_lin = snp_lineage_inverter(lineage_def, lineage_csv)
-
-a, b, c = amplicons_vs_snps(output_amplicon_dict, output_snp_lin, output_def_snps_json, output_def_snps_csv)
