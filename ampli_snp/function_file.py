@@ -89,7 +89,7 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
                     continue
 
     #Write tsv of all amplicons that cover the input SNPs
-    output_tsv = open("primer_pair_list_NG.tsv", "w")
+    output_tsv = open("primer_pair_list.tsv", "w")
     output_tsv.write("Lineage\tSNP_pos\tPrimer_Pairs\n")    
     for lineage in lineage_primer_dict:
         for snp in lineage_primer_dict[lineage]:
@@ -111,15 +111,17 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
         print(lineages_of_interest)
         lineages_of_interest = set(lineages_of_interest.split(","))
         print(lineages_of_interest)
+        #for lineage in lineages_of_interest:
+
     else:
         for lineage in lineage_primer_dict:
             lineages_of_interest.add(lineage)
     
-    #Make the overly complicated dictionaries and lists...
-    for lineage in lineage_primer_dict:
+    #Make the overly complicated dictionaries and lists based on the lineages of interest
+    for lineage in lineages_of_interest:
         for snp in lineage_primer_dict[lineage]:
             for i,primer in enumerate(lineage_primer_dict[lineage][snp]):
-                #Count occurances of each primer in full list.
+                #Count occurances of each primer in full list
                 primer_counts[primer] = all_primer_list.count(primer)
                 #Then create a dict with a count for each primer with consistent index position as snp - primer list
                 snp_primer_counts[snp].append(primer_counts[lineage_primer_dict[lineage][snp][i]])
@@ -158,23 +160,16 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
             #If the currently covered lineages are a superset of the newly considered amplicon set, ignore it and continue
             elif (covered_lineage_set.issuperset(i[1])):
                 continue
-            
-
-
-            ####THIS BIT IS BROKEN####
-            elif ((print(x) for x in i[1].difference(covered_lineage_set))):
-                
-                #print(lineages_of_interest.difference(covered_lineage_set))
-                continue
             #If it's not redundant to add it check if there are any primer pool conflicts
             else:
                 #Check if the new amplicon is compatible with those already in the set
                 if covered_lineage_set:
                     amp_no = int(i[2].split("_")[1])
-                    if (re.match((".*" + str(amp_no + 1) + ".*"), str(least_primer_lineage_list))):
-                        print("Amplicon pool conflict found for %s and %s" % (i[2],amp_no + 1))
+                    if (re.match((".*" + str(amp_no + 1) + "'.*"), str(least_primer_lineage_list))):
+                        print(least_primer_lineage_list)
+                        print("\nAmplicon pool conflict found for %s and %s" % (i[2],amp_no + 1))
                         continue
-                    elif (re.match((".*" + str(amp_no - 1) + ".*"), str(least_primer_lineage_list))):
+                    elif (re.match((".*" + str(amp_no - 1) + "'.*"), str(least_primer_lineage_list))):
                         print("Amplicon pool conflict found for %s and %s" % (i[2],amp_no - 1))
                         continue                
                     else:
