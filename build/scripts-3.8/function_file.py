@@ -3,6 +3,10 @@ import re
 from collections import defaultdict
 import json
 
+#test_bed = "MPXV.primer.bed"
+#lineage_def = "lineages.json"
+#lineage_csv = "MPX_reconstruction_def.csv"
+
 
 
 def bed_file_reader(input_bed):
@@ -64,6 +68,7 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
     #Combining the dictionaries made from the json and the csv - might be defferential to y values ( x | y ) so need to be careful
     defining_snps_dict = {**defining_snps_dict_json, **defining_snps_dict_csv}
     snp_lineage_dict = {**snp_lineage_dict_csv, **snp_lineage_dict_json}
+    #print(defining_snps_dict)
     #Take the dict of snp positions and loop through the lineages.
     lineage_primer_dict = defaultdict(dict)
     all_primer_list = []
@@ -125,7 +130,7 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
             #Append a list of the most often seen primer per snp
             minimal_primer_list.append(full_snp_primer_dict[snp][snp_primer_index[snp]])
     #"Unique" this list to get the minimal primer set
-    print("\nThe minimal list of primers to cover every defining snp in your lineages of interest is: \n%s" % set(minimal_primer_list))        
+    print("This is the minimal list of primers to cover every snp: %s" % set(minimal_primer_list))        
 
     
     #Next section is to generate the minimal primer set that captures at least one snp from all given lineages
@@ -161,7 +166,7 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
                         print("\nAmplicon pool conflict found for %s and %s" % (i[2],amp_no + 1))
                         continue
                     elif (re.match((".*" + str(amp_no - 1) + "'.*"), str(least_primer_lineage_list))):
-                        print("\nAmplicon pool conflict found for %s and %s" % (i[2],amp_no - 1))
+                        print("Amplicon pool conflict found for %s and %s" % (i[2],amp_no - 1))
                         continue                
                     else:
                         covered_lineage_set = covered_lineage_set.union(i[1])
@@ -171,6 +176,7 @@ def amplicons_vs_snps(amplicon_dict, snp_lineage_dict_csv, snp_lineage_dict_json
                     covered_lineage_set = covered_lineage_set.union(i[1])
                     least_primer_lineage_list.append(i[2])
     
-    print ("\nThe minimal list of primers to cover the %s lineages is: \n%s\n" % (lineages_of_interest, least_primer_lineage_list))
+    print ("\nThis is the minimal list of primers to cover the %s lineages: \n%s\n" % (lineages_of_interest,least_primer_lineage_list))
+    
     
     return output_tsv, defining_snps_dict, least_primer_lineage_list

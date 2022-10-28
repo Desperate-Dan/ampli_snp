@@ -4,6 +4,8 @@ import glob
 import os
 import pkg_resources
 
+from ampli_snp import __version__, _program
+
 setup(
     name='ampli_snp',
     version='0.0.1',    
@@ -13,12 +15,11 @@ setup(
     author_email='dmaloney@ed.ac.uk',
     license='...',
     packages=find_packages(),
-    scripts=['ampli_snp/ampli_snp/function_file.py']
+    scripts=['ampli_snp/function_file.py'],
     install_requires=['biopython'
                       ],
     entry_points="""
     [console_scripts]
     {program} = ampli_snp.command:main
-    """.format(program = _program),
-    include_package_data=True
+    """.format(program = _program)
 )
