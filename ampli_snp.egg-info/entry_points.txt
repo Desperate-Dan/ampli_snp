@@ -1,2 +1,0 @@
-[console_scripts]
-ampli_snp = ampli_snp.command:main
